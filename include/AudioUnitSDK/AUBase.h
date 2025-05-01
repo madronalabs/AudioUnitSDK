@@ -511,7 +511,7 @@ protected:
 			ioInfo.flags |= kAudioUnitParameterFlag_CFNameRelease;
 		}
 		CFStringGetCString(
-			inName, std::data(ioInfo.name), std::ssize(ioInfo.name), kCFStringEncodingUTF8);
+			inName, std::data(ioInfo.name), std::size(ioInfo.name), kCFStringEncodingUTF8);
 	}
 
 	static void HasClump(AudioUnitParameterInfo& ioInfo, UInt32 inClumpID) noexcept

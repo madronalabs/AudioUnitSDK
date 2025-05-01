@@ -115,6 +115,8 @@ void AUElement::SetScheduledEvent(AudioUnitParameterID paramID,
 //
 void AUElement::GetParameterList(AudioUnitParameterID* outList)
 {
+  // ML
+  /*
 	if (mUseIndexedParameters) {
 		const auto numParams = std::ssize(mIndexedParameters);
 		std::iota(outList, std::next(outList, numParams), 0);
@@ -122,11 +124,22 @@ void AUElement::GetParameterList(AudioUnitParameterID* outList)
 		std::ranges::transform(
 			mParameters, outList, [](const auto& keyValue) { return keyValue.first; });
 	}
+  */
+  if (mUseIndexedParameters) {
+    const auto nparams = static_cast<UInt32>(mIndexedParameters.size());
+    for (UInt32 i = 0; i < nparams; i++) {
+      *outList++ = (AudioUnitParameterID)i; // NOLINT
+    }
+  } else {
+    for (const auto& param : mParameters) {
+      *outList++ = param.first; // NOLINT
+    }
+  }
 }
 
 //_____________________________________________________________________________
 //
-static void AppendBytes(CFMutableDataRef data, const TriviallyCopySerializable auto& value)
+static void AppendBytes(CFMutableDataRef data, const /*TriviallyCopySerializable*/ auto& value)
 {
 	CFDataAppendBytes(data, reinterpret_cast<const UInt8*>(&value), sizeof(value)); // NOLINT
 }
@@ -157,7 +170,7 @@ void AUElement::SaveState(AudioUnitScope scope, CFMutableDataRef data)
 		}
 
 		AppendBytes(data, CFSwapInt32HostToBig(paramID));
-		AppendBytes(data, CFSwapInt32HostToBig(std::bit_cast<UInt32>(value)));
+		AppendBytes(data, CFSwapInt32HostToBig(*reinterpret_cast<UInt32*>(&value)));
 
 		++paramsWritten;
 	};
@@ -189,10 +202,12 @@ const UInt8* AUElement::RestoreState(const UInt8* state)
 	const auto numParams = DeserializeBigUInt32AndAdvance(p);
 
 	for (UInt32 i = 0; i < numParams; ++i) {
-		const auto parameterID = DeserializeBigUInt32AndAdvance(p);
-		const auto valueBytes = DeserializeBigUInt32AndAdvance(p);
-		const auto value = std::bit_cast<AudioUnitParameterValue>(valueBytes);
+		const UInt32 parameterID = DeserializeBigUInt32AndAdvance(p);
+    UInt32 valueBytes = DeserializeBigUInt32AndAdvance(p);
+		const auto value = *(reinterpret_cast<AudioUnitParameterValue*>(&valueBytes));
 
+    
+    
 		SetParameter(parameterID, value);
 	}
 	return p;

@@ -22,7 +22,7 @@
 #include <cstring>
 #include <memory>
 #include <mutex>
-#include <span>
+#include "span.hpp"
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -381,7 +381,7 @@ private:
 	{
 		mStorage = decltype(mStorage)(inSource.mStorage.size());
 		std::memcpy(
-			mStorage.data(), inSource.mStorage.data(), std::span(inSource.mStorage).size_bytes());
+			mStorage.data(), inSource.mStorage.data(), tcb::span(inSource.mStorage).size_bytes());
 	}
 
 	// the data representation is not literally an array of these entire objects, however using it
@@ -450,7 +450,7 @@ inline double Frequency()
 
 /// Basic RAII wrapper for CoreFoundation types
 template <typename T>
-	requires std::is_pointer_v<T>
+// 	requires std::is_pointer_v<T>
 class Owned {
 	explicit Owned(T obj, bool fromget) noexcept : mImpl{ obj }
 	{
@@ -527,24 +527,25 @@ private:
 // -------------------------------------------------------------------------------------------------
 #pragma mark -
 
-template <typename T>
-concept TriviallyCopySerializable = std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>;
+// template <typename T>
+// concept TriviallyCopySerializable = std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>;
 
 // copy object data to arbitrary memory address that may not share object alignment
-void Serialize(const TriviallyCopySerializable auto& inValue, void* outData) noexcept
+template <typename T>
+void Serialize(const /*TriviallyCopySerializable*/ T& inValue, void* outData) noexcept
 {
 	std::memcpy(outData, std::addressof(inValue), sizeof(inValue));
 }
 
-template <TriviallyCopySerializable T, std::size_t Extent>
-void Serialize(std::span<T, Extent> inValues, void* outData) noexcept
+template <typename T, std::size_t Extent>
+void Serialize(tcb::span<T, Extent> inValues, void* outData) noexcept
 {
 	std::memcpy(outData, inValues.data(), inValues.size_bytes());
 }
 
 // ensure object lifetime and alignment of object data from opaque pointer
-template <TriviallyCopySerializable T>
-	requires std::is_nothrow_default_constructible_v<T> && (!std::is_const_v<T>)
+template <typename T>
+// 	requires std::is_nothrow_default_constructible_v<T> && (!std::is_const_v<T>)
 T Deserialize(const void* inData) noexcept
 {
 	T result{};
@@ -552,12 +553,12 @@ T Deserialize(const void* inData) noexcept
 	return result;
 }
 
-template <TriviallyCopySerializable T>
-	requires std::is_default_constructible_v<T> && (!std::is_const_v<T>)
+template <typename T>
+// 	requires std::is_default_constructible_v<T> && (!std::is_const_v<T>)
 std::vector<T> DeserializeArray(const void* inData, size_t inSizeBytes)
 {
 	std::vector<T> result(inSizeBytes / sizeof(T));
-	std::memcpy(result.data(), inData, std::span(result).size_bytes());
+	std::memcpy(result.data(), inData, tcb::span(result).size_bytes());
 	return result;
 }
 

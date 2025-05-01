@@ -364,7 +364,7 @@ OSStatus AUBase::DispatchGetPropertyInfo(AudioUnitPropertyID inID, AudioUnitScop
 	case kAudioUnitProperty_SupportedChannelLayoutTags: {
 		const auto tags = GetChannelLayoutTags(inScope, inElement);
 		AUSDK_Require(!tags.empty(), kAudioUnitErr_InvalidProperty);
-		outDataSize = static_cast<UInt32>(std::span(tags).size_bytes());
+		outDataSize = static_cast<UInt32>(tcb::span(tags).size_bytes());
 		outWritable = false;
 		validateElement = false; // already done it
 		break;
@@ -477,7 +477,7 @@ OSStatus AUBase::DispatchGetProperty(
 			std::vector<AudioUnitParameterID> parameterIDs(parameterCount);
 			result = GetParameterList(inScope, parameterIDs.data(), parameterCount);
 			if (result == noErr) {
-				Serialize(std::span(parameterIDs), outData);
+				Serialize(tcb::span(parameterIDs), outData);
 			}
 		}
 		break;
@@ -559,7 +559,7 @@ OSStatus AUBase::DispatchGetProperty(
 		const AUChannelInfo* infos = nullptr;
 		const auto count = SupportedNumChannels(&infos);
 		if ((count > 0) && (infos != nullptr)) {
-			Serialize(std::span(infos, count), outData);
+			Serialize(tcb::span(infos, count), outData);
 		}
 		break;
 	}
@@ -567,7 +567,7 @@ OSStatus AUBase::DispatchGetProperty(
 	case kAudioUnitProperty_SupportedChannelLayoutTags: {
 		const auto tags = GetChannelLayoutTags(inScope, inElement);
 		AUSDK_Require(!tags.empty(), kAudioUnitErr_InvalidProperty);
-		Serialize(std::span(tags), outData);
+		Serialize(tcb::span(tags), outData);
 		break;
 	}
 
@@ -1067,7 +1067,8 @@ OSStatus AUBase::ProcessForScheduledParams(
 
 
 	// sort the ParameterEventList by startBufferOffset
-	std::ranges::sort(inParamList, ParameterEventListSortPredicate);
+	// std::ranges::sort(inParamList, ParameterEventListSortPredicate);
+	std::sort(inParamList.begin(), inParamList.end(), ParameterEventListSortPredicate);
 
 	while (framesRemaining > 0) {
 		// first of all, go through the ramped automation events and find out where the next
@@ -1679,9 +1680,12 @@ OSStatus AUBase::SetAudioChannelLayout(
 
 	const auto tags = GetChannelLayoutTags(inScope, inElement);
 	AUSDK_Require(!tags.empty(), kAudioUnitErr_InvalidProperty);
-	const auto iter = std::ranges::find_if(tags, [inTag = inLayout->mChannelLayoutTag](auto tag) {
+
+	const auto inTag = inLayout->mChannelLayoutTag;
+	const auto iter = std::find_if(tags.begin(), tags.end(), [&inTag](auto& tag) {
 		return tag == inTag || tag == kAudioChannelLayoutTag_UseChannelDescriptions;
 	});
+
 	AUSDK_Require(iter != tags.end(), kAudioUnitErr_InvalidPropertyValue);
 
 	return element.SetAudioChannelLayout(*inLayout);

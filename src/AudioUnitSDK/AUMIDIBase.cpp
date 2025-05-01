@@ -88,7 +88,7 @@ OSStatus AUMIDIBase::DelegateGetProperty(
 		AUSDK_Require(inElement == 0, kAudioUnitErr_InvalidElement);
 		std::vector<AUParameterMIDIMapping> maps(mMIDIMapper->GetNumberMaps());
 		mMIDIMapper->GetMaps(maps.data());
-		Serialize(std::span(maps), outData);
+		Serialize(tcb::span(maps), outData);
 		return noErr;
 	}
 
